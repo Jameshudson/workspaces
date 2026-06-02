@@ -1,0 +1,145 @@
+#!/bin/zsh
+# tmux session picker — launched directly by Terminal.app as the startup command
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+
+[ -t 0 ] || exec zsh
+clear
+
+_tmux_new_session() {
+  local session_name layout dir target right_id left_id tmpfile
+  tmpfile=$(mktemp /tmp/tmux-picker-XXXXXX)
+
+  read "session_name?Session name (leave blank for default): "
+
+  printf "1 — single panel\n2 — side by side\n3 — one left, two right\n4 — 2x2 grid" \
+    | fzf --prompt="Layout> " --height=60% --reverse \
+      --preview 'case {1} in
+        1) printf "┌───────────────┐\n│               │\n│               │\n│               │\n│               │\n│               │\n└───────────────┘\n\n  Single panel" ;;
+        2) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n│       │       │\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  Side by side" ;;
+        3) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n│       ├───────┤\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  One left, two right" ;;
+        4) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n├───────┼───────┤\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  2x2 grid" ;;
+      esac' \
+      --preview-window right:35% \
+    > "$tmpfile"
+  layout=$(<"$tmpfile")
+  layout=${layout%% *}
+  if [ -z "$layout" ]; then
+    rm -f "$tmpfile"
+    exec zsh
+  fi
+
+  find ~ -type d -maxdepth 3 2>/dev/null \
+    | fzf --prompt="Directory> " --query="$HOME" --height=40% --reverse --preview 'ls {}' > "$tmpfile"
+  dir=$(<"$tmpfile")
+  rm -f "$tmpfile"
+  if [ -z "$dir" ]; then
+    exec zsh
+  fi
+
+  if [ -n "$session_name" ]; then
+    target=$(tmux new-session -d -s "$session_name" -c "$dir" -P -F '#S')
+  else
+    target=$(tmux new-session -d -c "$dir" -P -F '#S')
+  fi
+
+  case "$layout" in
+    2)
+      tmux split-window -h -t "${target}:0.0" -c "$dir"
+      ;;
+    3)
+      right_id=$(tmux split-window -h -t "${target}:0.0" -c "$dir" -P -F '#{pane_id}')
+      tmux split-window -v -t "$right_id" -c "$dir"
+      ;;
+    4)
+      left_id=$(tmux display-message -t "${target}:0.0" -p '#{pane_id}')
+      right_id=$(tmux split-window -h -t "${target}:0.0" -c "$dir" -P -F '#{pane_id}')
+      tmux split-window -v -t "$left_id" -c "$dir"
+      tmux split-window -v -t "$right_id" -c "$dir"
+      ;;
+  esac
+
+  tmux select-pane -t "${target}:0.0"
+  exec tmux attach -t "$target"
+}
+
+_list_sessions() {
+  tmux list-sessions \
+    -F '#{session_last_attached}^#{session_name}^#{t/f/%d %b %R:session_created}^#{t/f/%d %b %R:session_last_attached}^#{?session_attached,●, }' \
+    2>/dev/null | sort -rn | cut -d'^' -f2- | \
+  while IFS='^' read -r name created last attached; do
+    panes=$(tmux list-panes -s -t "=$name" 2>/dev/null | wc -l | tr -d ' ')
+    printf "%s::\t%sp\t%s\t%s\t%s\n" "$name" "$panes" "$created" "$last" "$attached"
+  done | column -t -s $'\t'
+}
+
+# If tmux server isn't running, restore saved sessions (only one instance at a time)
+if ! tmux info &>/dev/null 2>&1; then
+  lockfile="/tmp/tmux-picker-restore.lock"
+  if (set -C; echo $$ > "$lockfile") 2>/dev/null; then
+    # Got the lock — we do the restore
+    tmux start-server
+    sleep 0.3
+    ~/.tmux/plugins/tmux-resurrect/scripts/restore.sh >/dev/null 2>&1
+    rm -f "$lockfile"
+  else
+    # Another instance is restoring — wait for it to finish
+    printf "Waiting for restore..."
+    while [ -f "$lockfile" ]; do
+      printf "."
+      sleep 0.25
+    done
+    printf "\n"
+  fi
+  # Poll until sessions appear (up to 3 seconds)
+  for i in {1..12}; do
+    [ -n "$(tmux list-sessions 2>/dev/null)" ] && break
+    sleep 0.25
+  done
+fi
+
+tmpfile=$(mktemp /tmp/tmux-picker-XXXXXX)
+
+while true; do
+  sessions=$(_list_sessions)
+
+  if [ -z "$sessions" ]; then
+    rm -f "$tmpfile"
+    _tmux_new_session
+    break
+  fi
+
+  printf "New session\n%s\n" "$sessions" | fzf \
+    --prompt="tmux> " \
+    --height=60% \
+    --reverse \
+    --header="enter: attach   ctrl-x: kill" \
+    --expect=ctrl-x \
+    > "$tmpfile"
+  fzf_exit=$?
+
+  key=$(head -1 "$tmpfile")
+  choice=$(tail -n +2 "$tmpfile")
+
+  if [ $fzf_exit -ne 0 ] || [ -z "$choice" ]; then
+    rm -f "$tmpfile"
+    exec zsh
+  elif [ "$key" = "ctrl-x" ]; then
+    if [ -n "$choice" ] && [ "$choice" != "New session" ]; then
+      session="${choice%%::*}"
+      confirm_file=$(mktemp /tmp/tmux-picker-XXXXXX)
+      printf "No\nYes, kill '$session'" | fzf --prompt="Confirm> " --height=20% --reverse > "$confirm_file"
+      confirm=$(<"$confirm_file")
+      rm -f "$confirm_file"
+      [[ "$confirm" == Yes* ]] && tmux kill-session -t "=$session"
+    fi
+    continue
+  elif [ "$choice" = "New session" ]; then
+    rm -f "$tmpfile"
+    _tmux_new_session
+    break
+  else
+    rm -f "$tmpfile"
+    exec tmux attach -t "${choice%%::*}"
+  fi
+done
