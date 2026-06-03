@@ -17,8 +17,7 @@ fi
 success "Homebrew"
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
-info "Installing tmux and fzf..."
-brew install tmux fzf 2>/dev/null || brew upgrade tmux fzf 2>/dev/null || true
+brew install tmux fzf
 success "tmux $(tmux -V | cut -d' ' -f2), fzf $(fzf --version | cut -d' ' -f1)"
 
 # ── TPM ───────────────────────────────────────────────────────────────────────
@@ -34,13 +33,13 @@ if [ -f "$HOME/.tmux.conf" ] && [ ! -L "$HOME/.tmux.conf" ]; then
   mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.bak"
 fi
 ln -sf "$DOTFILES/tmux.conf" "$HOME/.tmux.conf"
-success "~/.tmux.conf → dotfiles/tmux.conf"
+success "~/.tmux.conf → $(basename $DOTFILES)/tmux.conf"
 
 # ── tmux-picker ───────────────────────────────────────────────────────────────
 mkdir -p "$HOME/.local/bin"
 ln -sf "$DOTFILES/tmux-picker" "$HOME/.local/bin/tmux-picker"
 chmod +x "$DOTFILES/tmux-picker"
-success "~/.local/bin/tmux-picker → dotfiles/tmux-picker"
+success "~/.local/bin/tmux-picker → $(basename $DOTFILES)/tmux-picker"
 
 # ── TPM plugins ───────────────────────────────────────────────────────────────
 info "Installing tmux plugins (resurrect + continuum)..."
@@ -56,10 +55,6 @@ if ! grep -q "$MARKER" "$ZSHRC" 2>/dev/null; then
   printf '[[ "$(defaults read com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification 2>/dev/null)" == "1" ]] || \\\n  defaults write com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification -bool true\n' >> "$ZSHRC"
 fi
 success "~/.zshrc"
-
-# ── Apply Terminal.app setting now ────────────────────────────────────────────
-defaults write com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification -bool true
-success "Terminal.app window restoration disabled"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 printf "\n\033[32mAll done!\033[0m One manual step:\n\n"
