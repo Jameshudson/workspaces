@@ -73,8 +73,8 @@ _list_sessions() {
   done | column -t -s $'\t'
 }
 
-# Fresh start — show saved sessions instantly, recreate on selection
-if ! tmux info &>/dev/null 2>&1; then
+# No live sessions — show saved sessions picker (server may or may not be running)
+if [ -z "$(tmux list-sessions 2>/dev/null)" ]; then
   resurrect_file="${HOME}/.local/share/tmux/resurrect/last"
 
   if [ ! -f "$resurrect_file" ]; then
