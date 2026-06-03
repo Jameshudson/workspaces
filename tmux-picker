@@ -73,19 +73,13 @@ _list_sessions() {
   done | column -t -s $'\t'
 }
 
-# Fresh start — show saved sessions instantly, restore in background
+# Fresh start — show saved sessions instantly, recreate on selection
 if ! tmux info &>/dev/null 2>&1; then
   resurrect_file="${HOME}/.local/share/tmux/resurrect/last"
 
-  # Kick off restore immediately in the background
-  { tmux start-server; ~/.tmux/plugins/tmux-resurrect/scripts/restore.sh >/dev/null 2>&1; } &
-
   if [ ! -f "$resurrect_file" ]; then
-    # No save file — wait for server then go straight to new session
-    for i in {1..8}; do tmux info &>/dev/null 2>&1 && break; sleep 0.1; done
     _tmux_new_session
   else
-    # Show saved sessions from file immediately — no waiting
     saved=$(awk -F'\t' '/^pane/{
       cnt[$2]++
       if (!dir[$2]) dir[$2] = substr($8, 2)
@@ -98,7 +92,7 @@ if ! tmux info &>/dev/null 2>&1; then
       --prompt="tmux> " \
       --height=60% \
       --reverse \
-      --header="Saved sessions" \
+      --header="Saved sessions  (prefix+ctrl-r inside tmux to restore layout)" \
       > "$tmpfile"
     fzf_exit=$?
     choice=$(<"$tmpfile")
@@ -107,15 +101,12 @@ if ! tmux info &>/dev/null 2>&1; then
     if [ $fzf_exit -ne 0 ] || [ -z "$choice" ]; then
       exec zsh
     elif [ "$choice" = "New session" ]; then
-      for i in {1..8}; do tmux info &>/dev/null 2>&1 && break; sleep 0.1; done
       _tmux_new_session
     else
       session="${choice%%::*}"
-      for i in {1..12}; do
-        tmux has-session -t "=$session" 2>/dev/null && break
-        sleep 0.25
-      done
-      tmux has-session -t "=$session" 2>/dev/null && exec tmux attach -t "=$session" || _tmux_new_session
+      dir=$(awk -F'\t' -v s="$session" '/^pane/ && $2==s && !found {print substr($8,2); found=1}' "$resurrect_file")
+      tmux new-session -d -s "$session" -c "${dir:-$HOME}" 2>/dev/null || true
+      exec tmux attach -t "=$session"
     fi
   fi
 fi
