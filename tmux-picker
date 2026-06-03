@@ -63,6 +63,28 @@ _tmux_new_session() {
   exec tmux attach -t "$target"
 }
 
+_restore_session() {
+  local session="$1" file="$2"
+  local pane_data layout first_dir pane_count
+
+  pane_data=$(awk -F'\t' -v s="$session" '/^pane/ && $2==s {print $6"\t"substr($8,2)}' "$file" | sort -n)
+  layout=$(awk -F'\t' -v s="$session" '/^window/ && $2==s {print $7; exit}' "$file")
+  first_dir=$(echo "$pane_data" | head -1 | cut -f2)
+  pane_count=$(echo "$pane_data" | wc -l | tr -d ' ')
+
+  tmux new-session -d -s "$session" -c "${first_dir:-$HOME}"
+
+  echo "$pane_data" | tail -n +2 | while IFS=$'\t' read -r idx dir; do
+    tmux split-window -t "=$session:0" -c "${dir:-$HOME}"
+  done
+
+  if [ "$pane_count" -gt 1 ]; then
+    tmux select-layout -t "=$session:0" "$layout" 2>/dev/null || \
+    tmux select-layout -t "=$session:0" tiled 2>/dev/null || true
+  fi
+  tmux select-pane -t "=$session:0.0"
+}
+
 _list_sessions() {
   tmux list-sessions \
     -F '#{session_last_attached}^#{session_name}^#{t/f/%d %b %R:session_created}^#{t/f/%d %b %R:session_last_attached}^#{?session_attached,●, }' \
@@ -92,7 +114,7 @@ if [ -z "$(tmux list-sessions 2>/dev/null)" ]; then
       --prompt="tmux> " \
       --height=60% \
       --reverse \
-      --header="Saved sessions  (prefix+ctrl-r inside tmux to restore layout)" \
+      --header="Saved sessions" \
       > "$tmpfile"
     fzf_exit=$?
     choice=$(<"$tmpfile")
@@ -104,19 +126,8 @@ if [ -z "$(tmux list-sessions 2>/dev/null)" ]; then
       _tmux_new_session
     else
       session="${choice%%::*}"
-      tmux info &>/dev/null 2>&1 || tmux start-server
-      ~/.tmux/plugins/tmux-resurrect/scripts/restore.sh >/dev/null 2>&1
-      for i in {1..12}; do
-        tmux has-session -t "=$session" 2>/dev/null && break
-        sleep 0.25
-      done
-      if tmux has-session -t "=$session" 2>/dev/null; then
-        exec tmux attach -t "=$session"
-      else
-        dir=$(awk -F'\t' -v s="$session" '/^pane/ && $2==s && !found{print substr($8,2); found=1}' "$resurrect_file")
-        tmux new-session -d -s "$session" -c "${dir:-$HOME}" 2>/dev/null || true
-        exec tmux attach -t "=$session"
-      fi
+      _restore_session "$session" "$resurrect_file"
+      exec tmux attach -t "=$session"
     fi
   fi
 fi
