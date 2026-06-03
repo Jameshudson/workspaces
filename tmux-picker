@@ -73,29 +73,51 @@ _list_sessions() {
   done | column -t -s $'\t'
 }
 
-# If tmux server isn't running, restore saved sessions (only one instance at a time)
+# Fresh start — show saved sessions instantly, restore in background
 if ! tmux info &>/dev/null 2>&1; then
-  lockfile="/tmp/tmux-picker-restore.lock"
-  if (set -C; echo $$ > "$lockfile") 2>/dev/null; then
-    # Got the lock — we do the restore
-    tmux start-server
-    sleep 0.3
-    ~/.tmux/plugins/tmux-resurrect/scripts/restore.sh >/dev/null 2>&1
-    rm -f "$lockfile"
+  resurrect_file="${HOME}/.local/share/tmux/resurrect/last"
+
+  # Kick off restore immediately in the background
+  { tmux start-server; ~/.tmux/plugins/tmux-resurrect/scripts/restore.sh >/dev/null 2>&1; } &
+
+  if [ ! -f "$resurrect_file" ]; then
+    # No save file — wait for server then go straight to new session
+    for i in {1..8}; do tmux info &>/dev/null 2>&1 && break; sleep 0.1; done
+    _tmux_new_session
   else
-    # Another instance is restoring — wait for it to finish
-    printf "Waiting for restore..."
-    while [ -f "$lockfile" ]; do
-      printf "."
-      sleep 0.25
-    done
-    printf "\n"
+    # Show saved sessions from file immediately — no waiting
+    saved=$(awk -F'\t' '/^pane/{
+      cnt[$2]++
+      if (!dir[$2]) dir[$2] = substr($8, 2)
+    } END {
+      for (s in cnt) printf "%s::\t%sp\t%s\n", s, cnt[s], dir[s]
+    }' "$resurrect_file" | sort | column -t -s $'\t')
+
+    tmpfile=$(mktemp /tmp/tmux-picker-XXXXXX)
+    printf "New session\n%s\n" "$saved" | fzf \
+      --prompt="tmux> " \
+      --height=60% \
+      --reverse \
+      --header="Saved sessions" \
+      > "$tmpfile"
+    fzf_exit=$?
+    choice=$(<"$tmpfile")
+    rm -f "$tmpfile"
+
+    if [ $fzf_exit -ne 0 ] || [ -z "$choice" ]; then
+      exec zsh
+    elif [ "$choice" = "New session" ]; then
+      for i in {1..8}; do tmux info &>/dev/null 2>&1 && break; sleep 0.1; done
+      _tmux_new_session
+    else
+      session="${choice%%::*}"
+      for i in {1..12}; do
+        tmux has-session -t "=$session" 2>/dev/null && break
+        sleep 0.25
+      done
+      tmux has-session -t "=$session" 2>/dev/null && exec tmux attach -t "=$session" || _tmux_new_session
+    fi
   fi
-  # Poll until sessions appear (up to 3 seconds)
-  for i in {1..12}; do
-    [ -n "$(tmux list-sessions 2>/dev/null)" ] && break
-    sleep 0.25
-  done
 fi
 
 tmpfile=$(mktemp /tmp/tmux-picker-XXXXXX)
