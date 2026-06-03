@@ -104,9 +104,19 @@ if [ -z "$(tmux list-sessions 2>/dev/null)" ]; then
       _tmux_new_session
     else
       session="${choice%%::*}"
-      dir=$(awk -F'\t' -v s="$session" '/^pane/ && $2==s && !found {print substr($8,2); found=1}' "$resurrect_file")
-      tmux new-session -d -s "$session" -c "${dir:-$HOME}" 2>/dev/null || true
-      exec tmux attach -t "=$session"
+      tmux info &>/dev/null 2>&1 || tmux start-server
+      ~/.tmux/plugins/tmux-resurrect/scripts/restore.sh >/dev/null 2>&1
+      for i in {1..12}; do
+        tmux has-session -t "=$session" 2>/dev/null && break
+        sleep 0.25
+      done
+      if tmux has-session -t "=$session" 2>/dev/null; then
+        exec tmux attach -t "=$session"
+      else
+        dir=$(awk -F'\t' -v s="$session" '/^pane/ && $2==s && !found{print substr($8,2); found=1}' "$resurrect_file")
+        tmux new-session -d -s "$session" -c "${dir:-$HOME}" 2>/dev/null || true
+        exec tmux attach -t "=$session"
+      fi
     fi
   fi
 fi
