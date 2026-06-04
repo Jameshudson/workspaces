@@ -70,5 +70,5 @@ success "~/.zshrc"
 # ── Done ──────────────────────────────────────────────────────────────────────
 printf "\n\033[32mAll done!\033[0m One manual step:\n\n"
 printf "  Terminal.app → Settings → Profiles → Shell tab\n"
-printf "  ☑ Run command: \033[1m%s/.local/bin/tmux-picker\033[0m\n" "$HOME"
+printf "  ☑ Run command: \033[1m~/.local/bin/tmux-picker\033[0m\n"
 printf "  ☐ Run inside shell  (must be unchecked)\n\n"
