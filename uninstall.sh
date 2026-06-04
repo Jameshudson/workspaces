@@ -32,7 +32,7 @@ ZSHRC="$HOME/.zshrc"
 MARKER="# tmux-picker: prevent Terminal.app window restoration"
 if grep -q "$MARKER" "$ZSHRC" 2>/dev/null; then
   # Remove the marker line and the defaults write line after it
-  sed -i '' "/$MARKER/,+1d" "$ZSHRC"
+  sed -i '' "/$MARKER/,+2d" "$ZSHRC"
   success "Cleaned ~/.zshrc"
 fi
 
