@@ -1,17 +1,28 @@
 #!/bin/zsh
 set -e
 
-DOTFILES="$(cd "$(dirname "$0")" && pwd)"
+REPO="https://github.com/jameshudson/workspaces"  # update after pushing to GitHub
 
 info()    { printf "\033[34m→\033[0m %s\n" "$1"; }
 success() { printf "\033[32m✓\033[0m %s\n" "$1"; }
 warn()    { printf "\033[33m!\033[0m %s\n" "$1"; }
 
+# ── Resolve dotfiles location ──────────────────────────────────────────────────
+# When run via curl pipe, $0 is "zsh" — clone the repo first
+if [[ "$0" == "zsh" || "$0" == "-zsh" || "$0" == "/bin/zsh" ]]; then
+  DOTFILES="${WORKSPACES_DIR:-$HOME/Projects/workspaces}"
+  if [ ! -d "$DOTFILES/.git" ]; then
+    info "Cloning workspaces repo to $DOTFILES..."
+    git clone "$REPO" "$DOTFILES"
+  fi
+else
+  DOTFILES="$(cd "$(dirname "$0")" && pwd)"
+fi
+
 # ── Homebrew ──────────────────────────────────────────────────────────────────
 if ! command -v brew &>/dev/null; then
   info "Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  # Add brew to PATH for the rest of this script (Apple Silicon)
   [[ -f /opt/homebrew/bin/brew ]] && eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 success "Homebrew"
