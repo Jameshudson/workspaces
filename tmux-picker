@@ -137,7 +137,15 @@ if [ -z "$(tmux list-sessions 2>/dev/null)" ]; then
       _tmux_new_session
     else
       session="${choice%%::*}"
+      # Restore selected session with full layout
       tmux has-session -t "=$session" 2>/dev/null || _restore_session "$session" "$resurrect_file"
+      # Restore all other sessions (name + dir) so they exist when the next tab opens
+      awk -F'\t' '/^pane/{if(!seen[$2]++) print $2"\t"substr($8,2)}' "$resurrect_file" | \
+      while IFS=$'\t' read -r s dir; do
+        [ "$s" = "$session" ] && continue
+        tmux has-session -t "=$s" 2>/dev/null || \
+          tmux new-session -d -s "$s" -c "${dir:-$HOME}" 2>/dev/null || true
+      done
       exec tmux attach -t "=$session"
     fi
   fi
