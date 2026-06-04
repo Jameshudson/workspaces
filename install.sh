@@ -10,7 +10,7 @@ warn()    { printf "\033[33m!\033[0m %s\n" "$1"; }
 # ── Resolve dotfiles location ──────────────────────────────────────────────────
 # When run via curl pipe, $0 is "zsh" — clone the repo first
 if [[ "$0" == "zsh" || "$0" == "-zsh" || "$0" == "/bin/zsh" ]]; then
-  DOTFILES="${WORKSPACES_DIR:-$HOME/Projects/workspaces}"
+  DOTFILES="${WORKSPACES_DIR:-$HOME/.workspaces}"
   if [ ! -d "$DOTFILES/.git" ]; then
     info "Cloning workspaces repo to $DOTFILES..."
     git clone "$REPO" "$DOTFILES"

@@ -27,8 +27,8 @@ Then one manual step in Terminal.app:
 ### Clone manually instead
 
 ```bash
-git clone https://github.com/jameshudson/workspaces ~/Projects/workspaces
-~/Projects/workspaces/install.sh
+git clone https://github.com/jameshudson/workspaces ~/.workspaces
+~/.workspaces/install.sh
 ```
 
 Set a custom clone location with:
