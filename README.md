@@ -15,7 +15,7 @@ A tmux session manager for macOS Terminal.app. Replaces the default shell with a
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jameshudson/workspaces/main/install.sh | zsh
+curl -fsSL https://raw.githubusercontent.com/Jameshudson/workspaces/main/install.sh | zsh
 ```
 
 Then one manual step in Terminal.app:
@@ -27,20 +27,20 @@ Then one manual step in Terminal.app:
 ### Clone manually instead
 
 ```bash
-git clone https://github.com/jameshudson/workspaces ~/.workspaces
+git clone https://github.com/Jameshudson/workspaces ~/.workspaces
 ~/.workspaces/install.sh
 ```
 
 Set a custom clone location with:
 
 ```bash
-WORKSPACES_DIR=~/my-location curl -fsSL https://raw.githubusercontent.com/jameshudson/workspaces/main/install.sh | zsh
+WORKSPACES_DIR=~/my-location curl -fsSL https://raw.githubusercontent.com/Jameshudson/workspaces/main/install.sh | zsh
 ```
 
 ## Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jameshudson/workspaces/main/uninstall.sh | zsh
+curl -fsSL https://raw.githubusercontent.com/Jameshudson/workspaces/main/uninstall.sh | zsh
 ```
 
 Then uncheck **Run command** in Terminal.app Settings → Profiles → Shell.

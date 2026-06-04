@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -e
 
-REPO="https://github.com/jameshudson/workspaces"  # update after pushing to GitHub
+REPO="https://github.com/Jameshudson/workspaces"
 
 info()    { printf "\033[34m→\033[0m %s\n" "$1"; }
 success() { printf "\033[32m✓\033[0m %s\n" "$1"; }
