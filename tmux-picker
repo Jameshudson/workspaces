@@ -60,6 +60,7 @@ _tmux_new_session() {
   esac
 
   tmux select-pane -t "${target}:0.0"
+  ~/.tmux/plugins/tmux-resurrect/scripts/save.sh >/dev/null 2>&1
   exec tmux attach -t "$target"
 }
 
