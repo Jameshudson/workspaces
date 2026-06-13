@@ -1,6 +1,6 @@
 # workspaces
 
-A tmux session manager for macOS Terminal.app. Replaces the default shell with an interactive picker for creating, restoring, and managing tmux sessions.
+A tmux session manager for macOS Terminal.app. Replaces the default shell with an interactive picker for creating and managing tmux sessions.
 
 ## Features
 
@@ -8,8 +8,6 @@ A tmux session manager for macOS Terminal.app. Replaces the default shell with a
 - Create sessions with a custom name, pane layout, and working directory
 - Sessions sorted by last used
 - Kill sessions with confirmation from the picker
-- Auto-saves every 5 minutes + on new session creation
-- Full restore on fresh start (layout, pane directories, scrollback history)
 - Tab titles show the active session name
 
 ## Install
@@ -52,8 +50,6 @@ Then uncheck **Run command** in Terminal.app Settings → Profiles → Shell.
 | Attach to session | Select from picker + Enter |
 | Create new session | Select "New session" |
 | Kill session | `ctrl-x` in picker |
-| Save sessions now | `prefix + ctrl-s` |
-| Restore full layout | `prefix + ctrl-r` |
 
 ## What gets installed
 
@@ -61,5 +57,4 @@ Then uncheck **Run command** in Terminal.app Settings → Profiles → Shell.
 |------|----------|
 | `tmux-picker` | `~/.local/bin/tmux-picker` (symlink) |
 | `tmux.conf` | `~/.tmux.conf` (symlink) |
-| TPM + plugins | `~/.tmux/plugins/` |
 | Terminal.app fix | appended to `~/.zshrc` |

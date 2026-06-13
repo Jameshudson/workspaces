@@ -68,12 +68,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Project: workspaces
 
-A tmux session manager for macOS Terminal.app. Replaces the default shell with an interactive picker that creates, restores, and attaches to tmux sessions.
+A tmux session manager for macOS Terminal.app. Replaces the default shell with an interactive picker that creates and attaches to tmux sessions.
 
 **Key files:**
-- `tmux-picker` — zsh script launched directly by Terminal.app as the startup command. Handles session listing, creation (with layout + directory picker), restore on fresh start, and kill with confirmation.
-- `tmux.conf` — tmux config. Plugins: tpm, tmux-resurrect, tmux-continuum. Sessions auto-save every 5 minutes. Pane commands are NOT restored on resurrect (prevents runaway processes).
-- `install.sh` — idempotent setup script for a new Mac. Installs Homebrew, tmux, fzf, TPM, symlinks configs, patches `.zshrc`.
+- `tmux-picker` — zsh script launched directly by Terminal.app as the startup command. Handles session listing, creation (with layout + directory picker), and kill with confirmation.
+- `tmux.conf` — tmux config. No plugins; terminal/mouse/clipboard settings only.
+- `install.sh` — idempotent setup script for a new Mac. Installs Homebrew, tmux, fzf, symlinks configs, patches `.zshrc`.
 
 **Architecture:**
 Terminal.app → `exec tmux-picker` → `exec tmux attach` (replaces process, no orphans)
@@ -83,7 +83,6 @@ Terminal.app → `exec tmux-picker` → `exec tmux attach` (replaces process, no
 **Testing changes to `tmux-picker`:**
 - Open a new terminal tab and observe behaviour directly — this is the only meaningful test
 - Check for stuck zsh processes after closing a tab: `ps aux | awk '$3 > 90 && /zsh/ && $7 == "??"'`
-- Verify sessions save: `ls -t ~/.local/share/tmux/resurrect/*.txt | head -3`
 
 **Shell conventions:**
 - Script is zsh (`#!/bin/zsh`), not bash

@@ -6,185 +6,67 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
 [ -t 0 ] || exec zsh
 clear
 
-# Clean up temp files on exit
 tmpfiles=()
 _cleanup() { rm -f "${tmpfiles[@]}"; }
 trap _cleanup EXIT
 
-_mktemp() { local f=$(_mktemp); tmpfiles+=("$f"); echo "$f"; }
-
-_tmux_new_session() {
-  local session_name layout dir target right_id left_id tmpfile
-  tmpfile=$(_mktemp)
-
-  read "session_name?Session name (leave blank for default): "
-
-  printf "1 — single panel\n2 — side by side\n3 — one left, two right\n4 — 2x2 grid" \
-    | fzf --prompt="Layout> " --height=60% --reverse \
-      --preview 'case {1} in
-        1) printf "┌───────────────┐\n│               │\n│               │\n│               │\n│               │\n│               │\n└───────────────┘\n\n  Single panel" ;;
-        2) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n│       │       │\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  Side by side" ;;
-        3) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n│       ├───────┤\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  One left, two right" ;;
-        4) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n├───────┼───────┤\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  2x2 grid" ;;
-      esac' \
-      --preview-window right:35% \
-    > "$tmpfile"
-  layout=$(<"$tmpfile")
-  layout=${layout%% *}
-  if [ -z "$layout" ]; then
-    rm -f "$tmpfile"
-    exec zsh
-  fi
-
-  find ~ -type d -maxdepth 3 2>/dev/null \
-    | fzf --prompt="Directory> " --query="$HOME" --height=40% --reverse --preview 'ls {}' > "$tmpfile"
-  dir=$(<"$tmpfile")
-  rm -f "$tmpfile"
-  if [ -z "$dir" ]; then
-    exec zsh
-  fi
-
-  if [ -n "$session_name" ]; then
-    target=$(tmux new-session -d -s "$session_name" -c "$dir" -P -F '#S')
-  else
-    target=$(tmux new-session -d -c "$dir" -P -F '#S')
-  fi
-
-  case "$layout" in
-    2)
-      tmux split-window -h -t "${target}:0.0" -c "$dir"
-      ;;
-    3)
-      right_id=$(tmux split-window -h -t "${target}:0.0" -c "$dir" -P -F '#{pane_id}')
-      tmux split-window -v -t "$right_id" -c "$dir"
-      ;;
-    4)
-      left_id=$(tmux display-message -t "${target}:0.0" -p '#{pane_id}')
-      right_id=$(tmux split-window -h -t "${target}:0.0" -c "$dir" -P -F '#{pane_id}')
-      tmux split-window -v -t "$left_id" -c "$dir"
-      tmux split-window -v -t "$right_id" -c "$dir"
-      ;;
-  esac
-
-  tmux select-pane -t "${target}:0.0"
-  ~/.tmux/plugins/tmux-resurrect/scripts/save.sh >/dev/null 2>&1
-  exec tmux attach -t "$target"
-}
-
-_restore_session() {
-  local session="$1" file="$2"
-  local pane_data layout first_dir pane_count
-
-  pane_data=$(awk -F'\t' -v s="$session" '/^pane/ && $2==s {print $6"\t"substr($8,2)}' "$file" | sort -n)
-  layout=$(awk -F'\t' -v s="$session" '/^window/ && $2==s {print $7; exit}' "$file")
-  first_dir=$(echo "$pane_data" | head -1 | cut -f2)
-  pane_count=$(echo "$pane_data" | wc -l | tr -d ' ')
-
-  tmux new-session -d -s "$session" -c "${first_dir:-$HOME}"
-
-  echo "$pane_data" | tail -n +2 | while IFS=$'\t' read -r idx dir; do
-    tmux split-window -t "=$session:0" -c "${dir:-$HOME}"
-  done
-
-  if [ "$pane_count" -gt 1 ]; then
-    tmux select-layout -t "=$session:0" "$layout" 2>/dev/null || \
-    tmux select-layout -t "=$session:0" tiled 2>/dev/null || true
-  fi
-  tmux select-pane -t "=$session:0.0"
-}
-
-_list_sessions() {
-  tmux list-sessions \
-    -F '#{session_last_attached}^#{session_name}^#{t/f/%d %b %R:session_created}^#{t/f/%d %b %R:session_last_attached}^#{?session_attached,●, }' \
-    2>/dev/null | sort -rn | cut -d'^' -f2- | \
-  while IFS='^' read -r name created last attached; do
-    panes=$(tmux list-panes -s -t "=$name" 2>/dev/null | wc -l | tr -d ' ')
-    printf "%s::\t%sp\t%s\t%s\t%s\n" "$name" "$panes" "$created" "$last" "$attached"
-  done | column -t -s $'\t'
-}
-
-# No live sessions — show saved sessions instantly, restore in background
-if [ -z "$(tmux list-sessions 2>/dev/null)" ]; then
-  resurrect_file="${HOME}/.local/share/tmux/resurrect/last"
-
-  if [ ! -f "$resurrect_file" ] || [ ! -s "$resurrect_file" ]; then
-    _tmux_new_session
-  else
-    # Start restore immediately in background while user picks
-    { tmux start-server 2>/dev/null; ~/.tmux/plugins/tmux-resurrect/scripts/restore.sh >/dev/null 2>&1; } &
-
-    saved=$(awk -F'\t' '/^pane/{
-      cnt[$2]++
-      if (!dir[$2]) dir[$2] = substr($8, 2)
-    } END {
-      for (s in cnt) printf "%s::\t%sp\t%s\n", s, cnt[s], dir[s]
-    }' "$resurrect_file" | sort | column -t -s $'\t')
-
-    tmpfile=$(_mktemp)
-    printf "New session\n%s\n" "$saved" | fzf \
-      --prompt="tmux> " \
-      --height=60% \
-      --reverse \
-      --header="Saved sessions" \
-      > "$tmpfile"
-    fzf_exit=$?
-    choice=$(<"$tmpfile")
-    rm -f "$tmpfile"
-
-    if [ $fzf_exit -ne 0 ] || [ -z "$choice" ]; then
-      exec zsh
-    elif [ "$choice" = "New session" ]; then
-      _tmux_new_session
-    else
-      session="${choice%%::*}"
-      tmux has-session -t "=$session" 2>/dev/null || _restore_session "$session" "$resurrect_file"
-      exec tmux attach -t "=$session"
-    fi
-  fi
-fi
+_mktemp() { local f=$(mktemp); tmpfiles+=("$f"); echo "$f"; }
 
 tmpfile=$(_mktemp)
 
-while true; do
-  sessions=$(_list_sessions)
+printf "1 — single panel\n2 — side by side\n3 — one left, two right\n4 — 2x2 grid" \
+  | fzf --prompt="Layout> " --height=60% --reverse \
+    --preview 'case {1} in
+      1) printf "┌───────────────┐\n│               │\n│               │\n│               │\n│               │\n│               │\n└───────────────┘\n\n  Single panel" ;;
+      2) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n│       │       │\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  Side by side" ;;
+      3) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n│       ├───────┤\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  One left, two right" ;;
+      4) printf "┌───────┬───────┐\n│       │       │\n│       │       │\n├───────┼───────┤\n│       │       │\n│       │       │\n└───────┴───────┘\n\n  2x2 grid" ;;
+    esac' \
+    --preview-window right:35% \
+  > "$tmpfile"
+layout=$(<"$tmpfile")
+layout=${layout%% *}
 
-  if [ -z "$sessions" ]; then
-    rm -f "$tmpfile"
-    _tmux_new_session
-    break
-  fi
+if [ -z "$layout" ]; then
+  exec zsh
+fi
 
-  printf "New session\n%s\n" "$sessions" | fzf \
-    --prompt="tmux> " \
-    --height=60% \
-    --reverse \
-    --header="enter: attach   ctrl-x: kill" \
-    --expect=ctrl-x \
-    > "$tmpfile"
-  fzf_exit=$?
+find ~ -type d -maxdepth 3 2>/dev/null \
+  | fzf --prompt="Directory> " --query="$HOME" --height=40% --reverse --preview 'ls {}' > "$tmpfile"
+dir=$(<"$tmpfile")
 
-  key=$(head -1 "$tmpfile")
-  choice=$(tail -n +2 "$tmpfile")
+if [ -z "$dir" ]; then
+  exec zsh
+fi
 
-  if [ $fzf_exit -ne 0 ] || [ -z "$choice" ]; then
-    rm -f "$tmpfile"
-    exec zsh
-  elif [ "$key" = "ctrl-x" ]; then
-    if [ -n "$choice" ] && [ "$choice" != "New session" ]; then
-      session="${choice%%::*}"
-      confirm_file=$(_mktemp)
-      printf "No\nYes, kill '$session'" | fzf --prompt="Confirm> " --height=20% --reverse > "$confirm_file"
-      confirm=$(<"$confirm_file")
-      rm -f "$confirm_file"
-      [[ "$confirm" == Yes* ]] && tmux kill-session -t "=$session"
-    fi
-    continue
-  elif [ "$choice" = "New session" ]; then
-    rm -f "$tmpfile"
-    _tmux_new_session
-    break
-  else
-    rm -f "$tmpfile"
-    exec tmux attach -t "${choice%%::*}"
-  fi
-done
+# Create, attach, and set up layout in one tmux call.
+# destroy-unattached is set after the client is attached, so it only fires on close.
+case "$layout" in
+  1)
+    exec tmux new-session -c "$dir" \
+      ';' set-option destroy-unattached on
+    ;;
+  2)
+    exec tmux new-session -c "$dir" \
+      ';' set-option destroy-unattached on \
+      ';' split-window -h -c "$dir" \
+      ';' select-pane -t 0
+    ;;
+  3)
+    exec tmux new-session -c "$dir" \
+      ';' set-option destroy-unattached on \
+      ';' split-window -h -c "$dir" \
+      ';' split-window -v -c "$dir" \
+      ';' select-pane -t 0
+    ;;
+  4)
+    exec tmux new-session -c "$dir" \
+      ';' set-option destroy-unattached on \
+      ';' split-window -h -c "$dir" \
+      ';' select-pane -t 0 \
+      ';' split-window -v -c "$dir" \
+      ';' select-pane -t 1 \
+      ';' split-window -v -c "$dir" \
+      ';' select-pane -t 0
+    ;;
+esac

@@ -31,13 +31,6 @@ success "Homebrew"
 brew install tmux fzf
 success "tmux $(tmux -V | cut -d' ' -f2), fzf $(fzf --version | cut -d' ' -f1)"
 
-# ── TPM ───────────────────────────────────────────────────────────────────────
-if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
-  info "Installing TPM..."
-  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-fi
-success "TPM"
-
 # ── tmux.conf ─────────────────────────────────────────────────────────────────
 if [ -f "$HOME/.tmux.conf" ] && [ ! -L "$HOME/.tmux.conf" ]; then
   warn "Backing up existing ~/.tmux.conf to ~/.tmux.conf.bak"
@@ -51,11 +44,6 @@ mkdir -p "$HOME/.local/bin"
 ln -sf "$DOTFILES/tmux-picker" "$HOME/.local/bin/tmux-picker"
 chmod +x "$DOTFILES/tmux-picker"
 success "~/.local/bin/tmux-picker → $(basename $DOTFILES)/tmux-picker"
-
-# ── TPM plugins ───────────────────────────────────────────────────────────────
-info "Installing tmux plugins (resurrect + continuum)..."
-"$HOME/.tmux/plugins/tpm/bin/install_plugins" >/dev/null 2>&1
-success "tmux plugins"
 
 # ── .zshrc snippet ────────────────────────────────────────────────────────────
 ZSHRC="$HOME/.zshrc"

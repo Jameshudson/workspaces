@@ -42,6 +42,6 @@ success "Restored Terminal.app defaults"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 printf "\n\033[32mUninstalled.\033[0m\n"
-printf "tmux, fzf, and TPM were left in place — remove manually if needed.\n\n"
+printf "tmux and fzf were left in place — remove manually if needed.\n\n"
 printf "  Terminal.app → Settings → Profiles → Shell tab\n"
 printf "  Uncheck 'Run command' to restore default shell behaviour\n\n"
