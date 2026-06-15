@@ -4,6 +4,7 @@
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
 
 [ -t 0 ] || exec zsh
+printf '\033]0;workspaces\007'
 clear
 
 tmpfiles=()
