@@ -55,8 +55,31 @@ if ! grep -q "$MARKER" "$ZSHRC" 2>/dev/null; then
 fi
 success "~/.zshrc"
 
+# ── Terminal.app: disable scrollback (conflicts with tmux copy-mode in single pane) ──
+_term_plist=$(mktemp)
+if defaults export com.apple.Terminal "$_term_plist" 2>/dev/null; then
+  while IFS= read -r _profile; do
+    [[ -z "$_profile" ]] && continue
+    /usr/libexec/PlistBuddy \
+      -c "Set ':Window Settings:${_profile}:ScrollbackLines' 0" \
+      "$_term_plist" 2>/dev/null \
+      || /usr/libexec/PlistBuddy \
+        -c "Add ':Window Settings:${_profile}:ScrollbackLines' integer 0" \
+        "$_term_plist" 2>/dev/null \
+      || true
+    /usr/libexec/PlistBuddy \
+      -c "Delete ':Window Settings:${_profile}:ScrollbackUnlimited'" \
+      "$_term_plist" 2>/dev/null || true
+  done < <(/usr/libexec/PlistBuddy -c "Print ':Window Settings:'" "$_term_plist" 2>/dev/null \
+    | awk -F' = Dict \\{' '/ = Dict \{/ {gsub(/^[[:space:]]+/, "", $1); print $1}')
+  defaults import com.apple.Terminal "$_term_plist"
+  success "Terminal.app scrollback disabled"
+fi
+rm -f "$_term_plist"
+
 # ── Done ──────────────────────────────────────────────────────────────────────
-printf "\n\033[32mAll done!\033[0m One manual step:\n\n"
+printf "\n\033[32mAll done!\033[0m Manual steps:\n\n"
 printf "  Terminal.app → Settings → Profiles → Shell tab\n"
 printf "  ☑ Run command: \033[1m~/.local/bin/tmux-picker\033[0m\n"
 printf "  ☐ Run inside shell  (must be unchecked)\n\n"
+printf "  Then restart Terminal.app for scrollback change to take effect.\n\n"
