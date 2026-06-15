@@ -1,14 +1,6 @@
 # workspaces
 
-A tmux session manager for macOS Terminal.app. Replaces the default shell with an interactive picker for creating and managing tmux sessions.
-
-## Features
-
-- Session picker on every new terminal tab
-- Create sessions with a custom name, pane layout, and working directory
-- Sessions sorted by last used
-- Kill sessions with confirmation from the picker
-- Tab titles show the active session name
+A tmux launcher for macOS Terminal.app. Each new tab picks a layout and working directory, then drops you into a fresh tmux session. The session is destroyed when the tab closes.
 
 ## Install
 
@@ -16,11 +8,13 @@ A tmux session manager for macOS Terminal.app. Replaces the default shell with a
 curl -fsSL https://raw.githubusercontent.com/Jameshudson/workspaces/main/install.sh | zsh
 ```
 
-Then one manual step in Terminal.app:
+### After installing
 
-**Settings → Profiles → Shell tab**
+**Terminal.app → Settings → Profiles → Shell tab**
 - Check **Run command**: `~/.local/bin/tmux-picker`
 - Uncheck **Run inside shell**
+
+Then **restart Terminal.app**.
 
 ### Clone manually instead
 
@@ -45,11 +39,11 @@ Then uncheck **Run command** in Terminal.app Settings → Profiles → Shell.
 
 ## Usage
 
-| Action | How |
-|--------|-----|
-| Attach to session | Select from picker + Enter |
-| Create new session | Select "New session" |
-| Kill session | `ctrl-x` in picker |
+Opening a new tab prompts for:
+1. **Layout** — single panel, side by side, one left + two right, or 2×2 grid
+2. **Directory** — fuzzy-search your home directory tree
+
+Scroll through pane history with the mouse wheel (enters tmux copy mode). Press `q` to exit.
 
 ## What gets installed
 
@@ -57,4 +51,3 @@ Then uncheck **Run command** in Terminal.app Settings → Profiles → Shell.
 |------|----------|
 | `tmux-picker` | `~/.local/bin/tmux-picker` (symlink) |
 | `tmux.conf` | `~/.tmux.conf` (symlink) |
-| Terminal.app fix | appended to `~/.zshrc` |

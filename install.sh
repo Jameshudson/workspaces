@@ -45,15 +45,9 @@ ln -sf "$DOTFILES/tmux-picker" "$HOME/.local/bin/tmux-picker"
 chmod +x "$DOTFILES/tmux-picker"
 success "~/.local/bin/tmux-picker → $(basename $DOTFILES)/tmux-picker"
 
-# ── .zshrc snippet ────────────────────────────────────────────────────────────
-ZSHRC="$HOME/.zshrc"
-MARKER="# tmux-picker: prevent Terminal.app window restoration"
-if ! grep -q "$MARKER" "$ZSHRC" 2>/dev/null; then
-  info "Adding Terminal.app fix to ~/.zshrc..."
-  printf "\n%s\n" "$MARKER" >> "$ZSHRC"
-  printf '[[ "$(defaults read com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification 2>/dev/null)" == "1" ]] || \\\n  defaults write com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification -bool true\n' >> "$ZSHRC"
-fi
-success "~/.zshrc"
+# ── Terminal.app: disable window restoration ──────────────────────────────────
+defaults write com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification -bool true
+success "Terminal.app window restoration disabled"
 
 # ── Terminal.app: disable scrollback (conflicts with tmux copy-mode in single pane) ──
 _term_plist=$(mktemp)
