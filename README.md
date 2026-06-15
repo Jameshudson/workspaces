@@ -10,11 +10,7 @@ curl -fsSL https://raw.githubusercontent.com/Jameshudson/workspaces/main/install
 
 ### After installing
 
-**Terminal.app → Settings → Profiles → Shell tab**
-- Check **Run command**: `~/.local/bin/tmux-picker`
-- Uncheck **Run inside shell**
-
-Then **restart Terminal.app**.
+**Restart Terminal.app** to apply the settings.
 
 ### Clone manually instead
 

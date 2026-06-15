@@ -36,12 +36,20 @@ if grep -q "$MARKER" "$ZSHRC" 2>/dev/null; then
   success "Cleaned ~/.zshrc"
 fi
 
-# ── Terminal.app setting ──────────────────────────────────────────────────────
+# ── Terminal.app settings ─────────────────────────────────────────────────────
 defaults delete com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification 2>/dev/null || true
+_term_plist=$(mktemp)
+if defaults export com.apple.Terminal "$_term_plist" 2>/dev/null; then
+  _default=$(/usr/libexec/PlistBuddy -c "Print ':Default Window Settings'" "$_term_plist" 2>/dev/null)
+  if [[ -n "$_default" ]]; then
+    /usr/libexec/PlistBuddy -c "Set ':Window Settings:${_default}:HasCommandString' false" "$_term_plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Delete ':Window Settings:${_default}:CommandString'" "$_term_plist" 2>/dev/null || true
+    defaults import com.apple.Terminal "$_term_plist"
+  fi
+fi
+rm -f "$_term_plist"
 success "Restored Terminal.app defaults"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
-printf "\n\033[32mUninstalled.\033[0m\n"
+printf "\n\033[32mUninstalled.\033[0m Restart Terminal.app to apply.\n"
 printf "tmux and fzf were left in place — remove manually if needed.\n\n"
-printf "  Terminal.app → Settings → Profiles → Shell tab\n"
-printf "  Uncheck 'Run command' to restore default shell behaviour\n\n"

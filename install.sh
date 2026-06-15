@@ -49,31 +49,40 @@ success "~/.local/bin/tmux-picker → $(basename $DOTFILES)/tmux-picker"
 defaults write com.apple.Terminal NSQuitAlwaysSendsApplicationTerminateNotification -bool true
 success "Terminal.app window restoration disabled"
 
-# ── Terminal.app: disable scrollback (conflicts with tmux copy-mode in single pane) ──
+# ── Terminal.app: profile settings ────────────────────────────────────────────
 _term_plist=$(mktemp)
 if defaults export com.apple.Terminal "$_term_plist" 2>/dev/null; then
-  while IFS= read -r _profile; do
-    [[ -z "$_profile" ]] && continue
+  # Disable scrollback for all profiles (conflicts with tmux copy-mode in single pane)
+  while IFS= read -r _prof; do
+    [[ -z "$_prof" ]] && continue
     /usr/libexec/PlistBuddy \
-      -c "Set ':Window Settings:${_profile}:ScrollbackLines' 0" \
+      -c "Set ':Window Settings:${_prof}:ScrollbackLines' 0" \
       "$_term_plist" 2>/dev/null \
       || /usr/libexec/PlistBuddy \
-        -c "Add ':Window Settings:${_profile}:ScrollbackLines' integer 0" \
+        -c "Add ':Window Settings:${_prof}:ScrollbackLines' integer 0" \
         "$_term_plist" 2>/dev/null \
       || true
     /usr/libexec/PlistBuddy \
-      -c "Delete ':Window Settings:${_profile}:ScrollbackUnlimited'" \
+      -c "Delete ':Window Settings:${_prof}:ScrollbackUnlimited'" \
       "$_term_plist" 2>/dev/null || true
   done < <(/usr/libexec/PlistBuddy -c "Print ':Window Settings:'" "$_term_plist" 2>/dev/null \
     | awk -F' = Dict \\{' '/ = Dict \{/ {gsub(/^[[:space:]]+/, "", $1); print $1}')
+
+  # Configure default profile to run tmux-picker directly (no intermediate shell)
+  _default=$(/usr/libexec/PlistBuddy -c "Print ':Default Window Settings'" "$_term_plist" 2>/dev/null)
+  if [[ -n "$_default" ]]; then
+    /usr/libexec/PlistBuddy -c "Set ':Window Settings:${_default}:CommandString' $HOME/.local/bin/tmux-picker" "$_term_plist" 2>/dev/null \
+      || /usr/libexec/PlistBuddy -c "Add ':Window Settings:${_default}:CommandString' string $HOME/.local/bin/tmux-picker" "$_term_plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Set ':Window Settings:${_default}:HasCommandString' true" "$_term_plist" 2>/dev/null \
+      || /usr/libexec/PlistBuddy -c "Add ':Window Settings:${_default}:HasCommandString' bool true" "$_term_plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Set ':Window Settings:${_default}:RunCommandAsShell' false" "$_term_plist" 2>/dev/null \
+      || /usr/libexec/PlistBuddy -c "Add ':Window Settings:${_default}:RunCommandAsShell' bool false" "$_term_plist" 2>/dev/null || true
+  fi
+
   defaults import com.apple.Terminal "$_term_plist"
-  success "Terminal.app scrollback disabled"
+  success "Terminal.app configured"
 fi
 rm -f "$_term_plist"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
-printf "\n\033[32mAll done!\033[0m Manual steps:\n\n"
-printf "  Terminal.app → Settings → Profiles → Shell tab\n"
-printf "  ☑ Run command: \033[1m~/.local/bin/tmux-picker\033[0m\n"
-printf "  ☐ Run inside shell  (must be unchecked)\n\n"
-printf "  Then restart Terminal.app for scrollback change to take effect.\n\n"
+printf "\n\033[32mAll done!\033[0m Restart Terminal.app to apply.\n\n"
