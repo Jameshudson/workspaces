@@ -85,4 +85,8 @@ fi
 rm -f "$_term_plist"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
-printf "\n\033[32mAll done!\033[0m Restart Terminal.app to apply.\n\n"
+printf "\n\033[32mAll done!\033[0m\n\n"
+printf "  Restart Terminal.app to apply settings.\n\n"
+printf "  If new tabs still open a plain shell, check manually:\n"
+printf "  Settings → Profiles → Shell → Run command: \033[1m~/.local/bin/tmux-picker\033[0m\n"
+printf "                                ☐ Run inside shell (must be unchecked)\n\n"
