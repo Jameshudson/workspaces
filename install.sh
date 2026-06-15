@@ -66,7 +66,7 @@ if defaults export com.apple.Terminal "$_term_plist" 2>/dev/null; then
       -c "Delete ':Window Settings:${_prof}:ScrollbackUnlimited'" \
       "$_term_plist" 2>/dev/null || true
   done < <(/usr/libexec/PlistBuddy -c "Print ':Window Settings:'" "$_term_plist" 2>/dev/null \
-    | awk -F' = Dict \\{' '/ = Dict \{/ {gsub(/^[[:space:]]+/, "", $1); print $1}')
+    | LC_ALL=C awk -F' = Dict \\{' '/ = Dict \{/ {gsub(/^[[:space:]]+/, "", $1); print $1}')
 
   # Configure default profile to run tmux-picker directly (no intermediate shell)
   _default=$(/usr/libexec/PlistBuddy -c "Print ':Default Window Settings'" "$_term_plist" 2>/dev/null)
